@@ -13,6 +13,8 @@
 #include <assert.h>
 #include <errno.h>
 
+#include <request_parser.h>
+
 #define BACKLOG 				10
 
 #define HOST_LOOKUP_CMD 		"ifconfig | grep -P 'inet (?!127.0.0.1)'"

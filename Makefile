@@ -12,7 +12,7 @@ SRC = $(SRC_DIR)/serv.c
 OBJ = $(BUILD_DIR)/serv.o
 
 CFLAGS = -g -Wall -std=c99
-# INCFLAGS = -I $(MODULES_DIR)/options -I $(MODULES_DIR)/transfer
+INCFLAGS = -I $(INC_DIR)
 # LIBFLAGS = -L $(MODULES_DIR)/options -loptions -L $(MODULES_DIR)/transfer -ltransfer
 
 
@@ -27,7 +27,7 @@ $(TARGET): $(OBJ)
 # Makes the server object files
 $(OBJ): $(SRC) $(INC)
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
 
 clean:
 	@rm $(TARGET)
