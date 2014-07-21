@@ -7,13 +7,11 @@ BUILD_DIR = build
 TARGET = serv
 
 INC = $(shell find $(INC_DIR) -type f -name '*.h')
-# LIB = $(shell find $(MODULES_DIR) -type f -name '*.a')
-SRC = $(SRC_DIR)/serv.c
-OBJ = $(BUILD_DIR)/serv.o
+SRC = $(shell find $(SRC_DIR) -type f -name '*.c')
+OBJ = $(subst .c,.o,$(subst $(SRC_DIR),$(BUILD_DIR),$(SRC)))
 
 CFLAGS = -g -Wall -std=c99
 INCFLAGS = -I $(INC_DIR)
-# LIBFLAGS = -L $(MODULES_DIR)/options -loptions -L $(MODULES_DIR)/transfer -ltransfer
 
 
 # Rules #######################
@@ -25,10 +23,10 @@ $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 # Makes the server object files
-$(OBJ): $(SRC) $(INC)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(INC)
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(INCFLAGS) -c -o $@ $<
 
 clean:
-	@rm $(TARGET)
+	@rm -f $(TARGET)
 	@rm -rf $(BUILD_DIR)

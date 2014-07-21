@@ -30,29 +30,59 @@ void* listen_to_client(void *temp_args) {
 
 	struct thread_args *args = (struct thread_args *) temp_args;
 
-	while (1) {
-
-		char buf[RECV_BUF_SIZE];
-
-		int bytes_received = recv(args->socket_fd, buf, RECV_BUF_SIZE, 0);
-		
-		if (bytes_received == 0) {
-			printf("Client has closed connection\n");
-			break;
-		}
-
-		if (bytes_received == -1) {
-			printf("Recv error\n");
-			break;
-		}
-
-		printf("Received message (%d):\n", bytes_received);
-		printf("%s\n", buf);
+	// Create request parser
+	int error;
+	rp_parser *parser;
+	if ((error = rp_parser_create(&parser))) {
+		printf("Failed to create parser: %s\n", rp_strerr(error));
 	}
 
+	while (1) {
+
+		rp_parser_reset(parser);
+
+		int completed = 0;
+		int bytes_left = 0;
+		while (!completed) {
+
+			if (bytes_left >= RECV_BUF_SIZE) {
+				printf("Unable to parse request. Single line of request longer than buffer\n");
+				goto exit;
+			}
+
+			int bytes_to_rec = RECV_BUF_SIZE - bytes_left;
+			char buf[bytes_to_rec];
+
+			int bytes_received = recv(args->socket_fd, buf + bytes_left, bytes_to_rec, 0);
+			
+			if (bytes_received == 0) {
+				printf("Client has closed connection\n");
+				goto exit;
+			}
+
+			if (bytes_received == -1) {
+				printf("Recv error\n");
+				goto exit;
+			}
+
+			printf("Received message (%d):\n", bytes_received);
+			printf("%s\n", buf);
+
+			printf("Parsing request...\n");
+			if ((error = rp_parse(parser, buf, &bytes_left, &completed))) {
+				printf("Failed to parse request: %s\n", rp_strerr(error));
+				goto exit;
+			}
+		}
+
+		printf("Request successfully parsed!\n");
+	}
+
+exit:
 	printf("Terminating client connection...\n");
 
-// exit:
+	// Destroy request parser
+	rp_parser_destroy(parser);
 	// Free args
 	free(args);
 	// Terminate thread
@@ -93,7 +123,7 @@ int main(int argc, char *argv[]) {
 		endservent();
 	}
 
-	printf("Initiating Echo Server...\n\n");
+	printf("Initiating Web Server...\n\n");
 	
 	struct sockaddr_in addr;
 	
