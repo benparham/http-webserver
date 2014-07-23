@@ -39,21 +39,25 @@ void* listen_to_client(void *temp_args) {
 
 	while (1) {
 
+		// Buffer for recv
+		char buf[RECV_BUF_SIZE];
+
+		// Parser data structure
 		rp_parser_reset(parser);
 
-		int completed = 0;
-		int bytes_left = 0;
-		while (!completed) {
+		int bytes_leftover = 0;		// Set by rp_parse to indicate unparsed data leftover in buffer
+		while (!parser->completed) {
 
-			if (bytes_left >= RECV_BUF_SIZE) {
+			if (bytes_leftover >= RECV_BUF_SIZE) {
 				printf("Unable to parse request. Single line of request longer than buffer\n");
 				goto exit;
 			}
 
-			int bytes_to_rec = RECV_BUF_SIZE - bytes_left;
-			char buf[bytes_to_rec];
+			// Keep leftover unparsed bytes in buffer
+			int bytes_to_rec = RECV_BUF_SIZE - bytes_leftover;
+			memset(buf + bytes_leftover, 0, bytes_to_rec);
 
-			int bytes_received = recv(args->socket_fd, buf + bytes_left, bytes_to_rec, 0);
+			int bytes_received = recv(args->socket_fd, buf + bytes_leftover, bytes_to_rec, 0);
 			
 			if (bytes_received == 0) {
 				printf("Client has closed connection\n");
@@ -65,17 +69,18 @@ void* listen_to_client(void *temp_args) {
 				goto exit;
 			}
 
-			printf("Received message (%d):\n", bytes_received);
+			printf("Received message (%d/%d total):\n", bytes_received, bytes_received + bytes_leftover);
 			printf("%s\n", buf);
 
 			printf("Parsing request...\n");
-			if ((error = rp_parse(parser, buf, &bytes_left, &completed))) {
+			if ((error = rp_parse(parser, buf, &bytes_leftover))) {
 				printf("Failed to parse request: %s\n", rp_strerr(error));
 				goto exit;
 			}
 		}
 
-		printf("Request successfully parsed!\n");
+		printf("Request successfully parsed:\n");
+		rp_parser_print(parser);
 	}
 
 exit:
