@@ -136,6 +136,33 @@ static int parse_body(rp_parser *parser, char *buf) {
 
 static int parse_request_line(rp_parser *parser, char *line_start, char *line_end, int *bytes_leftover) {
 
+	int line_length = line_end - line_start + 1;
+	printf("line length: %d\n", line_length);
+	char line[line_length];
+	memcpy(line, line_start, line_length);
+	printf("line before: %s\n", line);
+	line[line_length] = '\0';
+	printf("Parsing requst line: %s\n", line);
+
+	char *method;
+	char *resource;
+	char *version;
+
+	if ((method = strtok(line_start, " ")) == NULL ||
+		(resource = strtok(NULL, " ")) == NULL ||
+		(version = strtok(NULL, "\n")) == NULL) {
+		
+		return ERR_MAL_DATA;
+	}
+
+	// if (version + strlen(version) >= line_end) {
+	// 	printf("Thing!\n");
+	// 	return ERR_MAL_DATA;
+	// }
+
+	printf("Method: %s\n", method);
+	printf("Resource: %s\n", resource);
+	printf("Version: %s\n", version);
 
 	return ERR_NOT_IMPLEMENTED;
 }
@@ -167,8 +194,13 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 	char *line_end;
 	while ((line_end = strchr(line_start, '\n')) != NULL) {
 
+		printf("Got line, start: %p, end: %p\n", line_start, line_end);
+		printf("Start char - '%c', end char - '%c'\n", line_start[0], line_end[0]);
+
 		int (*line_parser) (rp_parser*, char*, char*, int*) = 
 			(parser->request_line_completed) ? parse_header_line : parse_request_line;
+
+
 
 		if ((error = line_parser(parser, line_start, line_end, bytes_leftover))) { return error; }
 

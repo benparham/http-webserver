@@ -12,6 +12,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <request_parser.h>
 
@@ -104,6 +105,19 @@ static int handle_option(char *opt) {
 	return 1;
 }
 
+// Global socket var allows cleanup of socket upon interrupt
+int sock_listen;
+
+void cleanup_listening_socket(int sig) {
+
+	// Cleanup
+	close(sock_listen);
+
+	// Restore default handler and reraise the signal
+	signal(sig, SIG_DFL);
+	raise(sig);
+}
+
 int main(int argc, char *argv[]) {
 
 	// Parse args and set port number to use
@@ -133,14 +147,16 @@ int main(int argc, char *argv[]) {
 	struct sockaddr_in addr;
 	
 	// Create socket
-	int sock_listen = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	sock_listen = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sock_listen < 0) {
 		printf("Failed to create listening socket\n");
 		return 1;
 	}
-	else {
-		printf("Created socket with file descriptor: %d\n", sock_listen);
-	}
+
+	printf("Created socket with file descriptor: %d\n", sock_listen);
+
+	// Setup signal handler to cleanup socket upon interrupt
+	signal(SIGINT, cleanup_listening_socket);
 	
 	// Setup the address (port number) to bind to
 	memset(&addr, 0, sizeof(addr));

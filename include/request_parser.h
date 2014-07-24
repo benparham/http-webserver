@@ -7,6 +7,7 @@
 	XX(1, NOT_IMPLEMENTED, "Not yet implemented")	\
 	XX(2, INV_ARG, "Invalid argument")				\
 	XX(3, NO_MEM, "Not enough memory")				\
+	XX(4, MAL_DATA, "Malformed data")				\
 
 typedef enum PARSE_ERROR {
 #define XX(num, name, string) ERR_##name = num,
