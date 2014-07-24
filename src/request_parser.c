@@ -24,6 +24,21 @@ static const char *method_names[] = {
 #undef XX
 };
 
+static REQUEST_METHOD method_name_to_enum(char *name) {
+
+	if (name == NULL) {
+		return RM_INVALID;
+	}
+
+	for (int i = 0; i < RM_COUNT; i++) {
+		if (strcmp(method_names[i], name) == 0) {
+			return i;
+		}
+	}
+
+	return RM_INVALID;
+}
+
 static const char *header_names[] = {
 #define XX(num, name, string) string,
 	PARSER_HEADER_MAP(XX)
@@ -134,40 +149,41 @@ static int parse_body(rp_parser *parser, char *buf) {
 	return ERR_NOT_IMPLEMENTED;
 }
 
-static int parse_request_line(rp_parser *parser, char *line_start, char *line_end, int *bytes_leftover) {
-
-	int line_length = line_end - line_start + 1;
-	printf("line length: %d\n", line_length);
-	char line[line_length];
-	memcpy(line, line_start, line_length);
-	printf("line before: %s\n", line);
-	line[line_length] = '\0';
-	printf("Parsing requst line: %s\n", line);
+static int parse_request_line(rp_parser *parser, char *line, int *bytes_leftover) {
 
 	char *method;
 	char *resource;
 	char *version;
 
-	if ((method = strtok(line_start, " ")) == NULL ||
+	// TODO: strtok is not thread safe, gotta fix this for multiple connections!!!
+	if ((method = strtok(line, " ")) == NULL ||
 		(resource = strtok(NULL, " ")) == NULL ||
-		(version = strtok(NULL, "\n")) == NULL) {
-		
+		(version = strtok(NULL, " ")) == NULL) {
+
 		return ERR_MAL_DATA;
 	}
 
-	// if (version + strlen(version) >= line_end) {
-	// 	printf("Thing!\n");
-	// 	return ERR_MAL_DATA;
-	// }
+	// Set parser's request line fields
+	parser->method = method_name_to_enum(method);
 
-	printf("Method: %s\n", method);
-	printf("Resource: %s\n", resource);
-	printf("Version: %s\n", version);
+	parser->resource = (char *) malloc((strlen(resource) + 1) * sizeof(char));
+	strcpy(parser->resource, resource);
 
-	return ERR_NOT_IMPLEMENTED;
+	parser->version = (char *) malloc((strlen(version) + 1) * sizeof(char));
+	strcpy(parser->version, version);
+
+	// Update parser's progress
+	parser->request_line_completed = 1;
+
+	printf("Done parsing request line:\n");
+	rp_parser_print(parser);
+
+	return 0;
 }
 
-static int parse_header_line(rp_parser *parser, char *line_start, char *line_end, int *bytes_leftover) {
+static int parse_header_line(rp_parser *parser, char *line, int *bytes_leftover) {
+
+	printf("Parsing header line\n");
 
 	return ERR_NOT_IMPLEMENTED;
 }
@@ -194,15 +210,13 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 	char *line_end;
 	while ((line_end = strchr(line_start, '\n')) != NULL) {
 
-		printf("Got line, start: %p, end: %p\n", line_start, line_end);
-		printf("Start char - '%c', end char - '%c'\n", line_start[0], line_end[0]);
-
-		int (*line_parser) (rp_parser*, char*, char*, int*) = 
+		int (*line_parser) (rp_parser*, char*, int*) = 
 			(parser->request_line_completed) ? parse_header_line : parse_request_line;
 
+		// Replace newline with null terminator
+		*line_end = '\0';
 
-
-		if ((error = line_parser(parser, line_start, line_end, bytes_leftover))) { return error; }
+		if ((error = line_parser(parser, line_start, bytes_leftover))) { return error; }
 
 		line_start = line_end + 1;
 		

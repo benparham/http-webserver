@@ -20,15 +20,15 @@ const char* rp_strerr(int errnum);		// Returns the parser error message correspo
 
 //=========================== REQUEST METHODS ==============
 #define PARSER_METHOD_MAP(XX)	\
-	XX(0, INVALID, "invalid")	\
-	XX(1, OPTIONS, "options")	\
-	XX(2, GET, "get")			\
-	XX(3, HEAD, "head")			\
-	XX(4, POST, "post")			\
-	XX(5, PUT, "put")			\
-	XX(6, DELETE, "delete")		\
-	XX(7, TRACE, "trace")		\
-	XX(8, CONNECT, "connect")	\
+	XX(0, INVALID, "INVALID")	\
+	XX(1, OPTIONS, "OPTIONS")	\
+	XX(2, GET, "GET")			\
+	XX(3, HEAD, "HEAD")			\
+	XX(4, POST, "POST")			\
+	XX(5, PUT, "PUT")			\
+	XX(6, DELETE, "DELETE")		\
+	XX(7, TRACE, "TRACE")		\
+	XX(8, CONNECT, "CONNECT")	\
 
 typedef enum REQUEST_METHOD {
 #define XX(num, name, string) RM_##name = num,
