@@ -71,7 +71,7 @@ void* listen_to_client(void *temp_args) {
 			}
 
 			printf("Received message (%d/%d total):\n", bytes_received, bytes_received + bytes_leftover);
-			printf("%s\n", buf);
+			printf("'%s'\n", buf);
 
 			printf("Parsing request...\n");
 			if ((error = rp_parse(parser, buf, &bytes_leftover))) {

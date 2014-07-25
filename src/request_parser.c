@@ -148,7 +148,7 @@ static int parse_body(rp_parser *parser, char *buf) {
 	return ERR_NOT_IMPLEMENTED;
 }
 
-static int parse_request_line(rp_parser *parser, char *line, int *bytes_leftover) {
+static int parse_request_line(rp_parser *parser, char *line) {
 
 	char *method;
 	char *resource;
@@ -177,9 +177,7 @@ static int parse_request_line(rp_parser *parser, char *line, int *bytes_leftover
 	return 0;
 }
 
-static int parse_header_line(rp_parser *parser, char *line, int *bytes_leftover) {
-
-	printf("Parsing header line\n");
+static int parse_header_line(rp_parser *parser, char *line) {
 
 	char *name;
 	char *value;
@@ -190,9 +188,6 @@ static int parse_header_line(rp_parser *parser, char *line, int *bytes_leftover)
 
 		return ERR_MAL_DATA;
 	}
-
-	printf("Header name: %s\n", name);
-	printf("Header value: %s\n", value);
 
 	REQUEST_HEADER header = header_name_to_enum(name);
 	if (header == RH_INVALID) {
@@ -218,6 +213,9 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 		return ERR_INV_ARG;
 	}
 
+	printf("Parsing buffer (%d bytes):\n", (int) sizeof(buf));
+	printf("'%s'\n", buf);
+
 	// Parse request body
 	if (parser->headers_completed) {
 		if ((error = parse_body(parser, buf))) { return error; }
@@ -226,40 +224,46 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 		return 0;
 	}
 
+	int initial_bytes = strlen(buf);
+	*bytes_leftover = initial_bytes;
+	printf("Initial bytes to parse in buffer: %d\n", initial_bytes);
+
 	// Parser request line and headers
 	char *line_start = buf;
 	char *line_end;
 	while ((line_end = strchr(line_start, '\n')) != NULL) {
 
-		int (*line_parser) (rp_parser*, char*, int*) = 
+		int (*line_parser) (rp_parser*, char*) = 
 			(parser->request_line_completed) ? parse_header_line : parse_request_line;
 
 		// Replace newline with null terminator
 		*line_end = '\0';
 
-		if ((error = line_parser(parser, line_start, bytes_leftover))) { return error; }
+		printf("Parsing line: %s\n", line_start);
+
+		if ((error = line_parser(parser, line_start))) { return error; }
+
+		*bytes_leftover -= (line_end - line_start);
+		printf("Subtracting %d bytes from bytes_leftover\n", (int) (line_end - line_start));
+		printf("New bytes leftover: %d\n", *bytes_leftover);
 
 		line_start = line_end + 1;
-		
-		// Newline was the last char in buf
-		if (line_start == NULL) {
-			*bytes_leftover = 0;
-			return 0;
-		}
 	}
-
-	*bytes_leftover = strlen(line_start);
 	
-	// Nothing in buf needs to be shifted
-	int leftover_idx = line_start - buf;
-	if (leftover_idx == 0) {
-		return 0;
+	int leftover_idx = initial_bytes - *bytes_leftover;
+	
+	if (leftover_idx > 0) {
+		// Shift leftover bytes to beginning of buf
+		int i;
+		for (i = 0; i < *bytes_leftover; i++) {
+			buf[i] = buf[leftover_idx + i];
+		}
+
+		// Null terminate leftover bytes
+		buf[i] = '\0';
 	}
 
-	// Shift leftover bytes to beginning of buf
-	for (int i = 0; i < *bytes_leftover; i++) {
-		buf[i] = buf[leftover_idx + i];
-	}
+	printf("Returning leftover: %s\n", buf);
 
 	return 0;
 }
