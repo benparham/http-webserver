@@ -45,23 +45,19 @@ static const char *header_names[] = {
 #undef XX
 };
 
-static void header_print(REQUEST_HEADER header, void *value) {
+static REQUEST_HEADER header_name_to_enum(char *name) {
 
-	// Check valid
-	if (value == NULL) {
-		return;
+	if (name == NULL) {
+		return RH_INVALID;
 	}
 
-	// Print header name
-	printf("%s: ", header_names[header]);
-
-	// Print header value
-	switch(header) {
-		case RH_ACCEPT:
-			printf("Accept header value\n");
-		default:
-			printf("Not yet implemented\n");
+	for (int i = 0; i < RH_COUNT; i++) {
+		if (strcmp(header_names[i], name) == 0) {
+			return i;
+		}
 	}
+
+	return RH_INVALID;
 }
 
 void rp_parser_print(rp_parser *parser) {
@@ -78,7 +74,10 @@ void rp_parser_print(rp_parser *parser) {
 
 	printf("Headers:\n");
 	for (int i = 0; i < RH_COUNT; i++) {
-		header_print(i, parser->headers[i]);
+		char *value = parser->headers[i];
+		if (value != NULL) {
+			printf("%s: %s\n", header_names[i], value);
+		}
 	}
 
 	printf("===================================\n");
@@ -175,9 +174,6 @@ static int parse_request_line(rp_parser *parser, char *line, int *bytes_leftover
 	// Update parser's progress
 	parser->request_line_completed = 1;
 
-	printf("Done parsing request line:\n");
-	rp_parser_print(parser);
-
 	return 0;
 }
 
@@ -185,7 +181,32 @@ static int parse_header_line(rp_parser *parser, char *line, int *bytes_leftover)
 
 	printf("Parsing header line\n");
 
-	return ERR_NOT_IMPLEMENTED;
+	char *name;
+	char *value;
+
+	// TODO: change strtok to something thread safe
+	if ((name = strtok(line, ": ")) == NULL ||
+		(value = strtok(NULL, " ")) == NULL) {
+
+		return ERR_MAL_DATA;
+	}
+
+	printf("Header name: %s\n", name);
+	printf("Header value: %s\n", value);
+
+	REQUEST_HEADER header = header_name_to_enum(name);
+	if (header == RH_INVALID) {
+		return ERR_MAL_DATA;
+	}
+
+	parser->headers[header] = (char *) malloc((strlen(value) + 1) * sizeof(char));
+	if (parser->headers[header] == NULL) {
+		return ERR_NO_MEM;
+	}
+
+	strcpy(parser->headers[header], value);
+
+	return 0;
 }
 
 int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
