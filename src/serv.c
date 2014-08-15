@@ -157,6 +157,14 @@ int main(int argc, char *argv[]) {
 
 	// Setup signal handler to cleanup socket upon interrupt
 	signal(SIGINT, cleanup_listening_socket);
+
+	// Set socket options
+	int opt_value = 1;
+	if (setsockopt(sock_listen, SOL_SOCKET, SO_REUSEADDR, &opt_value, sizeof(opt_value)) == -1) {
+		printf("Failed to set socket options\n");
+		close(sock_listen);
+		return 1;
+	}
 	
 	// Setup the address (port number) to bind to
 	memset(&addr, 0, sizeof(addr));

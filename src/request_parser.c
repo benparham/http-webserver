@@ -213,7 +213,7 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 		return ERR_INV_ARG;
 	}
 
-	printf("Parsing buffer (%d bytes):\n", (int) sizeof(buf));
+	printf("Parsing buffer:\n");
 	printf("'%s'\n", buf);
 
 	// Parse request body
@@ -248,14 +248,26 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 		printf("New bytes leftover: %d\n", *bytes_leftover);
 
 		line_start = line_end + 1;
+
+		printf("Line start: %p\n", line_start);
+		printf("Buf: %p\n", buf);
 	}
 	
 	int leftover_idx = initial_bytes - *bytes_leftover;
+
+	printf("Leftover index: %d\n", leftover_idx);
+	printf("'%s'\n", buf);
+	printf("Buffer now:\n");
+	for (int i = 0; i < initial_bytes; i++) {
+		printf("%c", buf[i]);
+	}
+	printf("\n");
 	
 	if (leftover_idx > 0) {
 		// Shift leftover bytes to beginning of buf
 		int i;
 		for (i = 0; i < *bytes_leftover; i++) {
+			printf("Shifting up '%c'\n", buf[leftover_idx + i]);
 			buf[i] = buf[leftover_idx + i];
 		}
 
