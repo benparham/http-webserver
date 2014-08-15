@@ -1,6 +1,8 @@
 #ifndef _REQUEST_PARSER_H_
 #define _REQUEST_PARSER_H_
 
+#define CRLF	"\r\n"
+
 //=========================== ERROR HANDLING ==============
 #define PARSER_ERROR_MAP(XX)						\
 	XX(0, NONE, "No error")							\

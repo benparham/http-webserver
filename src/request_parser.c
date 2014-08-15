@@ -157,7 +157,7 @@ static int parse_request_line(rp_parser *parser, char *line) {
 	// TODO: strtok is not thread safe, gotta fix this for multiple connections!!!
 	if ((method = strtok(line, " ")) == NULL ||
 		(resource = strtok(NULL, " ")) == NULL ||
-		(version = strtok(NULL, " ")) == NULL) {
+		(version = strtok(NULL, CRLF)) == NULL) {
 
 		return ERR_MAL_DATA;
 	}
@@ -184,7 +184,7 @@ static int parse_header_line(rp_parser *parser, char *line) {
 
 	// TODO: change strtok to something thread safe
 	if ((name = strtok(line, ": ")) == NULL ||
-		(value = strtok(NULL, " ")) == NULL) {
+		(value = strtok(NULL, CRLF)) == NULL) {
 
 		return ERR_MAL_DATA;
 	}
@@ -231,35 +231,42 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 	// Parser request line and headers
 	char *line_start = buf;
 	char *line_end;
-	while ((line_end = strchr(line_start, '\n')) != NULL) {
+	while ((line_end = strstr(line_start, CRLF)) != NULL) {
+
+		// Move line end to second half of CRLF
+		line_end += 1;
 
 		int (*line_parser) (rp_parser*, char*) = 
 			(parser->request_line_completed) ? parse_header_line : parse_request_line;
 
-		// Replace newline with null terminator
-		*line_end = '\0';
+		int line_length = (line_end - line_start) + 1;
 
-		printf("Parsing line: %s\n", line_start);
+		printf("Parsing line: ");
+		for (int i = 0; i < line_length; i++) {
+			printf("%c", line_start[i]);
+		}
+		printf("\n");
+
 
 		if ((error = line_parser(parser, line_start))) { return error; }
 
-		*bytes_leftover -= (line_end - line_start);
-		printf("Subtracting %d bytes from bytes_leftover\n", (int) (line_end - line_start));
+		*bytes_leftover -= line_length;
+		printf("Subtracting %d bytes from bytes_leftover\n", line_length);
 		printf("New bytes leftover: %d\n", *bytes_leftover);
 
 		line_start = line_end + 1;
-
-		printf("Line start: %p\n", line_start);
-		printf("Buf: %p\n", buf);
 	}
 	
 	int leftover_idx = initial_bytes - *bytes_leftover;
 
 	printf("Leftover index: %d\n", leftover_idx);
-	printf("'%s'\n", buf);
 	printf("Buffer now:\n");
 	for (int i = 0; i < initial_bytes; i++) {
-		printf("%c", buf[i]);
+		if (buf[i] == '\0') {
+			printf("\\0");
+		} else {
+			printf("%c", buf[i]);
+		}
 	}
 	printf("\n");
 	
@@ -267,13 +274,16 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 		// Shift leftover bytes to beginning of buf
 		int i;
 		for (i = 0; i < *bytes_leftover; i++) {
-			printf("Shifting up '%c'\n", buf[leftover_idx + i]);
+			// printf("Shifting up '%c'\n", buf[leftover_idx + i]);
 			buf[i] = buf[leftover_idx + i];
 		}
 
 		// Null terminate leftover bytes
 		buf[i] = '\0';
 	}
+
+	printf("Buffer after:\n");
+	printf("%s\n", buf);
 
 	printf("Returning leftover: %s\n", buf);
 
