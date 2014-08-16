@@ -21,7 +21,7 @@
 #define HOST_LOOKUP_CMD 		"ifconfig | grep -P 'inet (?!127.0.0.1)'"
 #define MAX_HOST_LEN			128
 
-#define RECV_BUF_SIZE			128
+#define RECV_BUF_SIZE			256
 
 struct thread_args {
 	int socket_fd;

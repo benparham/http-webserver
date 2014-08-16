@@ -102,6 +102,7 @@ int rp_parser_reset(rp_parser* parser) {
 	}
 
 	parser->body = NULL;
+	parser->body_bytes = 0;
 
 	parser->request_line_completed = 0;
 	parser->headers_completed = 0;
@@ -183,9 +184,18 @@ static int parse_header_line(rp_parser *parser, char *line) {
 	char *value;
 
 	// TODO: change strtok to something thread safe
-	if ((name = strtok(line, ": ")) == NULL ||
+	if ((name = strtok(line, ":")) == NULL ||
 		(value = strtok(NULL, CRLF)) == NULL) {
 
+		return ERR_MAL_DATA;
+	}
+
+	// Remove whitespace from value
+	while(value[0] == ' ') {
+		value += 1;
+	}
+	// Catch all whitespace value
+	if (value == NULL) {
 		return ERR_MAL_DATA;
 	}
 
@@ -204,6 +214,23 @@ static int parse_header_line(rp_parser *parser, char *line) {
 	return 0;
 }
 
+static int parser_has_body(rp_parser *parser) {
+
+	char *content_length = parser->headers[RH_CONTENT_LENGTH];
+	if (content_length != NULL &&
+		atoi(content_length) > 0) {
+		return 1;
+	}
+
+	char *transfer_encoding = parser->headers[RH_TE];
+	if (transfer_encoding != NULL &&
+		strcmp(transfer_encoding, "chunked") == 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
 int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 	
 	int error;
@@ -212,9 +239,6 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 	if (parser == NULL || buf == NULL || bytes_leftover == NULL) {
 		return ERR_INV_ARG;
 	}
-
-	printf("Parsing buffer:\n");
-	printf("'%s'\n", buf);
 
 	// Parse request body
 	if (parser->headers_completed) {
@@ -226,64 +250,63 @@ int rp_parse(rp_parser *parser, char *buf, int *bytes_leftover) {
 
 	int initial_bytes = strlen(buf);
 	*bytes_leftover = initial_bytes;
-	printf("Initial bytes to parse in buffer: %d\n", initial_bytes);
 
 	// Parser request line and headers
 	char *line_start = buf;
 	char *line_end;
 	while ((line_end = strstr(line_start, CRLF)) != NULL) {
 
+		// Catch end of header fields
+		if (line_end == line_start) {
+
+			if (parser->headers_completed) {
+				return ERR_MAL_DATA;
+			}
+
+			parser->headers_completed = 1;
+			
+			if (parser_has_body(parser)) {
+				line_start += strlen(CRLF);
+				if ((error = parse_body(parser, line_start))) { return error; }
+			} else {
+				parser->completed = 1;
+			}
+
+			*bytes_leftover = 0;
+			return 0;
+		}
+
 		// Move line end to second half of CRLF
 		line_end += 1;
 
+		int line_length = (line_end - line_start) + 1;
+
+		// Choose correct line parser
 		int (*line_parser) (rp_parser*, char*) = 
 			(parser->request_line_completed) ? parse_header_line : parse_request_line;
 
-		int line_length = (line_end - line_start) + 1;
-
-		printf("Parsing line: ");
-		for (int i = 0; i < line_length; i++) {
-			printf("%c", line_start[i]);
-		}
-		printf("\n");
-
-
+		// Parse line
 		if ((error = line_parser(parser, line_start))) { return error; }
 
+		// Adjust bytes leftover
 		*bytes_leftover -= line_length;
-		printf("Subtracting %d bytes from bytes_leftover\n", line_length);
-		printf("New bytes leftover: %d\n", *bytes_leftover);
 
+		// Increment
 		line_start = line_end + 1;
 	}
 	
+	// Shift leftover bytes to beginning of buf
 	int leftover_idx = initial_bytes - *bytes_leftover;
 
-	printf("Leftover index: %d\n", leftover_idx);
-	printf("Buffer now:\n");
-	for (int i = 0; i < initial_bytes; i++) {
-		if (buf[i] == '\0') {
-			printf("\\0");
-		} else {
-			printf("%c", buf[i]);
-		}
-	}
-	printf("\n");
-	
 	if (leftover_idx > 0) {
-		// Shift leftover bytes to beginning of buf
 		int i;
 		for (i = 0; i < *bytes_leftover; i++) {
-			// printf("Shifting up '%c'\n", buf[leftover_idx + i]);
 			buf[i] = buf[leftover_idx + i];
 		}
 
 		// Null terminate leftover bytes
 		buf[i] = '\0';
 	}
-
-	printf("Buffer after:\n");
-	printf("%s\n", buf);
 
 	printf("Returning leftover: %s\n", buf);
 

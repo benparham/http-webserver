@@ -105,6 +105,7 @@ typedef struct rp_parser {
 	 * NULL indicates no body was set by request
 	 */
 	void *body;
+	int body_bytes;
 
 	// Progress metadata
 	char request_line_completed : 1;
