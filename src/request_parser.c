@@ -3,19 +3,7 @@
 #include <string.h>
 
 #include <request_parser.h>
-
-//=========================== ERROR HANDLING ==============
-static const char *error_messages[] = {
-#define XX(num, name, string) string,
-	PARSER_ERROR_MAP(XX)
-#undef XX
-};
-
-const char* rp_strerr(int errnum) {
-	return error_messages[errnum];
-}
-// ========================================================
-
+#include <global.h>
 
 
 static const char *method_names[] = {

@@ -15,6 +15,7 @@
 #include <signal.h>
 
 #include <request_parser.h>
+#include <global.h>
 
 #define BACKLOG 				10
 
@@ -39,6 +40,8 @@ void* listen_to_client(void *temp_args) {
 	}
 
 	while (1) {
+
+		//------------ RECEIVE REQUEST
 
 		// Buffer for recv
 		char buf[RECV_BUF_SIZE];
@@ -82,6 +85,9 @@ void* listen_to_client(void *temp_args) {
 
 		printf("Request successfully parsed:\n");
 		rp_parser_print(parser);
+
+		//------------ SEND RESPONSE
+		
 	}
 
 exit:

@@ -1,24 +1,6 @@
 #ifndef _REQUEST_PARSER_H_
 #define _REQUEST_PARSER_H_
 
-#define CRLF	"\r\n"
-
-//=========================== ERROR HANDLING ==============
-#define PARSER_ERROR_MAP(XX)						\
-	XX(0, NONE, "No error")							\
-	XX(1, NOT_IMPLEMENTED, "Not yet implemented")	\
-	XX(2, INV_ARG, "Invalid argument")				\
-	XX(3, NO_MEM, "Not enough memory")				\
-	XX(4, MAL_DATA, "Malformed data")				\
-
-typedef enum PARSE_ERROR {
-#define XX(num, name, string) ERR_##name = num,
-	PARSER_ERROR_MAP(XX)
-#undef XX
-} PARSE_ERROR;
-
-const char* rp_strerr(int errnum);		// Returns the parser error message corresponding to errno
-
 
 //=========================== REQUEST METHODS ==============
 #define PARSER_METHOD_MAP(XX)	\
